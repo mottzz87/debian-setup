@@ -101,4 +101,13 @@ alias r='sudo -i'
 EOF
 fi
 
+# ==============================
+# 默认 shell 切换（只执行一次）
+# ==============================
+if [ "$SHELL" != "$(which zsh)" ]; then
+  echo "🔄 切换默认 shell 为 zsh"
+  chsh -s $(which zsh)
+  echo "⚠️ 请重新登录以生效"
+fi
+
 echo "=== ✅ USER ENV READY ==="

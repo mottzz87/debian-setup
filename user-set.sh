@@ -1,93 +1,107 @@
 #!/bin/bash
 set -e
 
-SSH_USER=admin
+echo "=== 👤 User Environment Setup ==="
 
-echo "=== 💻 User Layer: Shell 环境 ==="
+# ===== 参数 =====
+USER_NAME="admin"
 
-if [ "$EUID" -ne 0 ]; then
-  echo "❌ 请用 root 运行"
+# ===== 检查用户 =====
+if ! id "$USER_NAME" &>/dev/null; then
+  echo "❌ 用户不存在：$USER_NAME"
   exit 1
 fi
 
 # ===== 安装 zsh =====
-apt install -y zsh fzf
+apt update -y
+apt install -y zsh git curl
 
-# ===== Oh My Zsh =====
-if [ ! -d "/home/$SSH_USER/.oh-my-zsh" ]; then
-  echo "📦 安装 Oh My Zsh..."
-  su - $SSH_USER -c '
-    RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-  '
-fi
+# ===== 设置默认 shell =====
+chsh -s /bin/zsh $USER_NAME || true
 
-# ===== 插件 =====
-su - $SSH_USER -c '
-ZSH_CUSTOM=${ZSH_CUSTOM:-~/.oh-my-zsh/custom}
+# root 也统一（可选）
+chsh -s /bin/zsh root || true
 
-[ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ] && \
-git clone https://github.com/zsh-users/zsh-autosuggestions $ZSH_CUSTOM/plugins/zsh-autosuggestions
+# ===== 统一 zshrc（核心）=====
+ZSHRC="/home/$USER_NAME/.zshrc"
 
-[ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ] && \
-git clone https://github.com/zsh-users/zsh-syntax-highlighting $ZSH_CUSTOM/plugins/zsh-syntax-highlighting
-'
+cat > "$ZSHRC" <<'EOF'
+# =========================
+# Basic Prompt（核心：显示用户名）
+# =========================
+autoload -Uz colors && colors
 
-# ===== zoxide =====
-if ! command -v zoxide &>/dev/null; then
-  curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash
-fi
+setopt PROMPT_SUBST
 
-# ===== fnm =====
-if [ ! -d "/home/$SSH_USER/.local/share/fnm" ]; then
-  su - $SSH_USER -c '
-    curl -fsSL https://fnm.vercel.app/install | bash
-  '
-fi
+PROMPT='%F{green}%n@%m%f %F{blue}%~%f %# '
 
-# ===== 写入 zshrc（覆盖式，统一标准）=====
-cat > /home/$SSH_USER/.zshrc <<'EOF'
-export ZSH="$HOME/.oh-my-zsh"
-ZSH_THEME="robbyrussell"
+# =========================
+# history 优化
+# =========================
+HISTSIZE=10000
+SAVEHIST=10000
+setopt HIST_IGNORE_DUPS
+setopt SHARE_HISTORY
 
-plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
-
-source $ZSH/oh-my-zsh.sh
-
-# ===== alias =====
+# =========================
+# 基础 alias
+# =========================
 alias ll='ls -alF'
 alias la='ls -A'
 alias l='ls -CF'
 
 alias gs='git status'
 alias gp='git pull'
-alias gd='git diff'
 alias gc='git commit'
+alias gd='git diff'
 
 alias dps='docker ps'
 alias dcu='docker compose up -d'
 alias dcd='docker compose down'
 
-# 提权
+# root 快速切换（你可以保留）
 alias r='sudo -i'
 
-# zoxide
-eval "$(zoxide init zsh --cmd z)"
+# =========================
+# zoxide（如果存在才加载）
+# =========================
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init zsh --cmd z)"
+fi
 
-# fzf
-[ -f /usr/share/doc/fzf/examples/key-bindings.zsh ] && source /usr/share/doc/fzf/examples/key-bindings.zsh
-
-# fnm
-FNM_PATH="$HOME/.local/share/fnm"
+# =========================
+# fnm（Node版本管理）
+# =========================
+export FNM_PATH="$HOME/.local/share/fnm"
 if [ -d "$FNM_PATH" ]; then
   export PATH="$FNM_PATH:$PATH"
   eval "$(fnm env --shell zsh)"
 fi
+
+# =========================
+# Node / pnpm / npm 提示增强（可选）
+# =========================
+export EDITOR=vim
 EOF
 
-chown $SSH_USER:$SSH_USER /home/$SSH_USER/.zshrc
+# ===== root 也写一份 =====
+cat > /root/.zshrc <<'EOF'
+autoload -Uz colors && colors
+setopt PROMPT_SUBST
+PROMPT='%F{red}%n@%m%f %F{blue}%~%f %# '
 
-# ===== 默认 shell =====
-chsh -s $(which zsh) $SSH_USER
+alias ll='ls -alF'
+alias gs='git status'
+alias r='sudo -i'
+EOF
 
-echo "=== ✅ User 环境完成 ==="
-echo "👉 重新登录后生效"
+# ===== 修复权限 =====
+chown -R $USER_NAME:$USER_NAME /home/$USER_NAME
+
+# ===== 安装 zoxide（可选但推荐）=====
+if ! command -v zoxide >/dev/null 2>&1; then
+  curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash || true
+fi
+
+echo "=== ✅ User environment ready ==="
+echo "👉 重新登录 SSH 或执行: exec zsh"

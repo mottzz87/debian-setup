@@ -1,51 +1,90 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-echo "=== 👤 User Environment Setup ==="
+USER="admin"
 
-# ===== 参数 =====
-USER_NAME="admin"
+echo "=== 👤 USER ENV SETUP ==="
 
-# ===== 检查用户 =====
-if ! id "$USER_NAME" &>/dev/null; then
-  echo "❌ 用户不存在：$USER_NAME"
+if [ "$(whoami)" = "root" ]; then
+  echo "❌ 不要用 root 执行 user.sh"
   exit 1
 fi
 
-# ===== 安装 zsh =====
-apt update -y
-apt install -y zsh git curl
+# ==============================
+# fnm（Node 管理器）
+# ==============================
+if [ ! -d "$HOME/.local/share/fnm" ]; then
+  echo "🟢 安装 fnm"
+  curl -fsSL https://fnm.vercel.app/install | bash
+fi
 
-# ===== 设置默认 shell =====
-chsh -s /bin/zsh $USER_NAME || true
+export FNM_PATH="$HOME/.local/share/fnm"
+export PATH="$FNM_PATH:$PATH"
+eval "$(fnm env --shell bash)"
 
-# root 也统一（可选）
-chsh -s /bin/zsh root || true
+# ==============================
+# Node LTS
+# ==============================
+echo "🟢 安装 Node LTS"
+fnm install --lts
+fnm default lts-latest
 
-# ===== 统一 zshrc（核心）=====
-ZSHRC="/home/$USER_NAME/.zshrc"
+# ==============================
+# 全局 npm 工具
+# ==============================
+echo "📦 安装 npm 工具"
+npm install -g pm2 pnpm yarn
 
-cat > "$ZSHRC" <<'EOF'
-# =========================
-# Basic Prompt（核心：显示用户名）
-# =========================
-autoload -Uz colors && colors
+# ==============================
+# ZSH + Oh My Zsh
+# ==============================
+if [ ! -d "$HOME/.oh-my-zsh" ]; then
+  echo "⚡ 安装 Oh My Zsh"
+  RUNZSH=no CHSH=no sh -c \
+  "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+fi
 
-setopt PROMPT_SUBST
+# ==============================
+# 插件
+# ==============================
+ZSH_CUSTOM="$HOME/.oh-my-zsh/custom"
 
-PROMPT='%F{green}%n@%m%f %F{blue}%~%f %# '
+mkdir -p $ZSH_CUSTOM/plugins
 
-# =========================
-# history 优化
-# =========================
-HISTSIZE=10000
-SAVEHIST=10000
-setopt HIST_IGNORE_DUPS
-setopt SHARE_HISTORY
+[ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ] && \
+git clone https://github.com/zsh-users/zsh-autosuggestions $ZSH_CUSTOM/plugins/zsh-autosuggestions
 
-# =========================
-# 基础 alias
-# =========================
+[ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ] && \
+git clone https://github.com/zsh-users/zsh-syntax-highlighting $ZSH_CUSTOM/plugins/zsh-syntax-highlighting
+
+# ==============================
+# .zshrc 优化
+# ==============================
+ZSHRC="$HOME/.zshrc"
+
+if ! grep -q "zsh-autosuggestions" "$ZSHRC"; then
+  sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/' $ZSHRC
+fi
+
+# ==============================
+# fnm 自动加载
+# ==============================
+if ! grep -q "fnm env" "$ZSHRC"; then
+cat >> "$ZSHRC" <<'EOF'
+
+# fnm
+export FNM_PATH="$HOME/.local/share/fnm"
+export PATH="$FNM_PATH:$PATH"
+eval "$(fnm env --shell bash)"
+EOF
+fi
+
+# ==============================
+# 体验优化
+# ==============================
+if ! grep -q "alias ll=" "$ZSHRC"; then
+cat >> "$ZSHRC" <<'EOF'
+
 alias ll='ls -alF'
 alias la='ls -A'
 alias l='ls -CF'
@@ -53,55 +92,13 @@ alias l='ls -CF'
 alias gs='git status'
 alias gp='git pull'
 alias gc='git commit'
-alias gd='git diff'
 
 alias dps='docker ps'
 alias dcu='docker compose up -d'
 alias dcd='docker compose down'
 
-# root 快速切换（你可以保留）
-alias r='sudo -i'
-
-# =========================
-# zoxide（如果存在才加载）
-# =========================
-if command -v zoxide >/dev/null 2>&1; then
-  eval "$(zoxide init zsh --cmd z)"
-fi
-
-# =========================
-# fnm（Node版本管理）
-# =========================
-export FNM_PATH="$HOME/.local/share/fnm"
-if [ -d "$FNM_PATH" ]; then
-  export PATH="$FNM_PATH:$PATH"
-  eval "$(fnm env --shell zsh)"
-fi
-
-# =========================
-# Node / pnpm / npm 提示增强（可选）
-# =========================
-export EDITOR=vim
-EOF
-
-# ===== root 也写一份 =====
-cat > /root/.zshrc <<'EOF'
-autoload -Uz colors && colors
-setopt PROMPT_SUBST
-PROMPT='%F{red}%n@%m%f %F{blue}%~%f %# '
-
-alias ll='ls -alF'
-alias gs='git status'
 alias r='sudo -i'
 EOF
-
-# ===== 修复权限 =====
-chown -R $USER_NAME:$USER_NAME /home/$USER_NAME
-
-# ===== 安装 zoxide（可选但推荐）=====
-if ! command -v zoxide >/dev/null 2>&1; then
-  curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash || true
 fi
 
-echo "=== ✅ User environment ready ==="
-echo "👉 重新登录 SSH 或执行: exec zsh"
+echo "=== ✅ USER ENV READY ==="

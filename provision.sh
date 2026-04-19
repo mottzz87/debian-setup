@@ -2,17 +2,27 @@
 set -e
 
 SSH_USER=admin
+SSH_PORT=6522
 
-echo "=== 🚀 环境部署（可重复执行）==="
+echo "=== 🚀 Provision: 系统基础设施 ==="
 
-# ===== 基础更新 =====
-apt update && apt upgrade -y
+if [ "$EUID" -ne 0 ]; then
+  echo "❌ 请用 root 运行"
+  exit 1
+fi
 
-# ===== 安装软件（幂等）=====
+# ===== 更新 =====
+apt update -y
+apt upgrade -y
+
+# ===== 基础工具 =====
 apt install -y \
-  curl wget git vim zsh \
-  docker.io docker-compose \
-  nginx fail2ban
+  sudo curl wget git vim unzip \
+  build-essential ca-certificates gnupg lsb-release \
+  htop tree ncdu jq
+
+# ===== 核心服务 =====
+apt install -y docker.io docker-compose nginx fail2ban
 
 # ===== 时区 =====
 timedatectl set-timezone Asia/Tokyo
@@ -24,52 +34,47 @@ usermod -aG docker $SSH_USER
 
 # ===== Nginx =====
 systemctl enable nginx
-systemctl start nginx
+systemctl restart nginx
 
-# ===== Fail2ban（基础版）=====
-if [ ! -f /etc/fail2ban/jail.local ]; then
+# ===== Fail2ban（精简+安全版）=====
 cat > /etc/fail2ban/jail.local <<EOF
+[DEFAULT]
+ignoreip = 127.0.0.1/8 ::1
+bantime.increment = true
+bantime.factor = 2
+bantime.max = 2592000
+
 [sshd]
 enabled = true
-port = 6522
+port = $SSH_PORT
 backend = systemd
 maxretry = 6
 findtime = 600
 bantime = 604800
+
+[recidive]
+enabled = true
+logpath = /var/log/fail2ban.log
+bantime = 2592000
+findtime = 86400
+maxretry = 3
 EOF
-fi
 
 systemctl enable fail2ban
 systemctl restart fail2ban
 
-# ===== Zsh（仅第一次安装）=====
-if [ ! -d "/home/$SSH_USER/.oh-my-zsh" ]; then
-  su - $SSH_USER -c '
-  RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-  '
+# ===== Node.js（LTS）=====
+if ! command -v node &>/dev/null; then
+  echo "🟢 安装 Node.js LTS..."
+  curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+  apt install -y nodejs
 fi
 
-# ===== 插件（幂等）=====
-su - $SSH_USER -c '
-ZSH_CUSTOM=${ZSH_CUSTOM:-~/.oh-my-zsh/custom}
-
-[ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ] && \
-git clone https://github.com/zsh-users/zsh-autosuggestions $ZSH_CUSTOM/plugins/zsh-autosuggestions
-
-[ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ] && \
-git clone https://github.com/zsh-users/zsh-syntax-highlighting $ZSH_CUSTOM/plugins/zsh-syntax-highlighting
-'
-
-# ===== .zshrc（避免重复修改）=====
-ZSHRC="/home/$SSH_USER/.zshrc"
-
-if ! grep -q "zsh-autosuggestions" $ZSHRC; then
-  sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/' $ZSHRC
+# ===== PM2 =====
+if ! command -v pm2 &>/dev/null; then
+  npm install -g pm2
 fi
 
-chown $SSH_USER:$SSH_USER $ZSHRC
+pm2 startup systemd -u $SSH_USER --hp /home/$SSH_USER || true
 
-# ===== 默认 shell =====
-chsh -s $(which zsh) $SSH_USER
-
-echo "=== ✅ 环境部署完成 ==="
+echo "=== ✅ Provision 完成 ==="

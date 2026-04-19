@@ -38,7 +38,7 @@ apt upgrade -y -o Dpkg::Options::="--force-confnew"
 log "🔧 安装基础工具"
 apt install -y \
   sudo curl wget git vim unzip htop net-tools \
-  ca-certificates gnupg lsb-release zsh
+  ca-certificates gnupg lsb-release zoxide zsh
 
 # ==============================
 # 时区

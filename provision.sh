@@ -6,12 +6,14 @@ set -euo pipefail
 # ==============================
 SSH_USER="admin"
 SSH_PORT=6522
+
 LOG_FILE="/var/log/provision.log"
 
-PROVISION_VERSION="1.0.0"
+PROVISION_VERSION="1.3.0"
 
-# GitHub 仓库（建议后续改成 tag/version）
-REPO_BASE_URL="https://raw.githubusercontent.com/mottzz87/debian-setup/main"
+REPO_URL="https://github.com/mottzz87/debian-setup.git"
+
+WORKDIR="/opt/debian-setup"
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -20,6 +22,7 @@ export DEBIAN_FRONTEND=noninteractive
 # ==============================
 log() {
   echo -e "\033[1;32m[INFO]\033[0m $1"
+
   echo "[INFO] $1" >> "$LOG_FILE"
 }
 
@@ -28,13 +31,14 @@ log() {
 # ==============================
 if [ "$EUID" -ne 0 ]; then
   echo "❌ 请用 root 执行"
+
   exit 1
 fi
 
 log "🚀 开始 provision（系统层） v${PROVISION_VERSION}"
 
 # ==============================
-# 系统更新
+# 更新软件源
 # ==============================
 log "📦 更新软件源"
 
@@ -61,11 +65,24 @@ apt install -y \
   zsh
 
 # ==============================
-# 时区
+# 设置时区
 # ==============================
 log "🕒 设置时区"
 
 timedatectl set-timezone Asia/Tokyo
+
+# ==============================
+# 拉取仓库
+# ==============================
+log "📥 同步 debian-setup 仓库"
+
+if [ -d "$WORKDIR/.git" ]; then
+  git -C "$WORKDIR" pull
+else
+  rm -rf "$WORKDIR"
+
+  git clone "$REPO_URL" "$WORKDIR"
+fi
 
 # ==============================
 # Docker
@@ -79,7 +96,6 @@ fi
 systemctl enable docker
 systemctl restart docker
 
-# 用户存在才加入 docker 组
 if id "$SSH_USER" &>/dev/null; then
   usermod -aG docker "$SSH_USER"
 fi
@@ -93,6 +109,66 @@ if ! command -v nginx &>/dev/null; then
   apt install -y nginx
 fi
 
+# 创建目录
+mkdir -p /etc/nginx/security/http
+mkdir -p /etc/nginx/security/server
+mkdir -p /var/cache/nginx
+
+# cache 权限
+chown -R www-data:www-data /var/cache/nginx
+
+# ==============================
+# 备份 nginx.conf
+# ==============================
+if [ -f /etc/nginx/nginx.conf ]; then
+  BACKUP_FILE="/etc/nginx/nginx.conf.bak.$(date +%F-%H%M%S)"
+
+  log "💾 备份 nginx.conf -> $BACKUP_FILE"
+
+  cp /etc/nginx/nginx.conf "$BACKUP_FILE"
+fi
+
+# ==============================
+# 同步 nginx.conf
+# ==============================
+log "📥 同步 nginx.conf"
+
+cp -f \
+  "$WORKDIR/nginx/nginx.conf" \
+  /etc/nginx/nginx.conf
+
+# ==============================
+# 同步 nginx/security/http
+# ==============================
+if [ -d "$WORKDIR/nginx/security/http" ]; then
+  log "📥 同步 nginx security/http"
+
+  cp -rf \
+    "$WORKDIR/nginx/security/http/"* \
+    /etc/nginx/security/http/
+fi
+
+# ==============================
+# 同步 nginx/security/server
+# ==============================
+if [ -d "$WORKDIR/nginx/security/server" ]; then
+  log "📥 同步 nginx security/server"
+
+  cp -rf \
+    "$WORKDIR/nginx/security/server/"* \
+    /etc/nginx/security/server/
+fi
+
+# ==============================
+# 检查 Nginx 配置
+# ==============================
+log "🧪 检查 Nginx 配置"
+
+nginx -t
+
+# ==============================
+# 启动 Nginx
+# ==============================
 systemctl enable nginx
 systemctl restart nginx
 
@@ -103,48 +179,34 @@ log "🛡️ 配置 Fail2ban"
 
 apt install -y fail2ban
 
-# 创建目录
 mkdir -p /etc/fail2ban/filter.d
 
 # ==============================
-# 下载 jail.local
+# 同步 jail.local
 # ==============================
-log "📥 下载 jail.local"
+log "📥 同步 jail.local"
 
-curl --retry 3 --retry-delay 2 -fsSL \
-  "$REPO_BASE_URL/fail2ban/jail.local" \
-  -o /etc/fail2ban/jail.local
-
-# ==============================
-# 下载 filter.d
-# ==============================
-log "📥 下载 Fail2ban filters"
-
-FILTERS=(
-  nginx-444.conf
-  nginx-aggressive.conf
-  nginx-api-auth.conf
-  nginx-scanner.conf
-)
-
-for file in "${FILTERS[@]}"; do
-  log "⬇️ 下载 $file"
-
-  curl --retry 3 --retry-delay 2 -fsSL \
-    "$REPO_BASE_URL/fail2ban/filter.d/$file" \
-    -o "/etc/fail2ban/filter.d/$file"
-done
+cp -f \
+  "$WORKDIR/fail2ban/jail.local" \
+  /etc/fail2ban/jail.local
 
 # ==============================
-# Fail2ban 配置检查
+# 同步 filter.d
 # ==============================
+log "📥 同步 Fail2ban filters"
 
-if fail2ban-client -d >/dev/null; then
-  log "✅ Fail2ban 配置检查通过"
-else
-  log "❌ Fail2ban 配置错误"
-  exit 1
+if [ -d "$WORKDIR/fail2ban/filter.d" ]; then
+  cp -rf \
+    "$WORKDIR/fail2ban/filter.d/"* \
+    /etc/fail2ban/filter.d/
 fi
+
+# ==============================
+# 检查 Fail2ban 配置
+# ==============================
+log "🧪 检查 Fail2ban 配置"
+
+fail2ban-client -d >/dev/null
 
 # ==============================
 # 启动 Fail2ban
@@ -158,7 +220,7 @@ systemctl restart fail2ban
 if ! command -v node &>/dev/null; then
   log "🟢 安装 Node.js"
 
-  curl --retry 3 --retry-delay 2 -fsSL https://deb.nodesource.com/setup_20.x | bash -
+  curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 
   apt install -y nodejs
 fi
@@ -183,4 +245,4 @@ apt clean
 # ==============================
 # 完成
 # ==============================
-log "✅ provision（系统层）完成"
+log "✅ provision（系统层）完成 v${PROVISION_VERSION}"

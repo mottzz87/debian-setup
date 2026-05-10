@@ -8,6 +8,8 @@ SSH_USER="admin"
 SSH_PORT=6522
 LOG_FILE="/var/log/provision.log"
 
+PROVISION_VERSION="1.0.0"
+
 # GitHub 仓库（建议后续改成 tag/version）
 REPO_BASE_URL="https://raw.githubusercontent.com/mottzz87/debian-setup/main"
 
@@ -29,15 +31,14 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-log "🚀 开始 provision（系统层）"
+log "🚀 开始 provision（系统层） v${PROVISION_VERSION}"
 
 # ==============================
 # 系统更新
 # ==============================
-log "📦 更新系统"
+log "📦 更新软件源"
 
 apt update -y
-apt upgrade -y -o Dpkg::Options::="--force-confnew"
 
 # ==============================
 # 基础工具
@@ -110,7 +111,7 @@ mkdir -p /etc/fail2ban/filter.d
 # ==============================
 log "📥 下载 jail.local"
 
-curl -fsSL \
+curl --retry 3 --retry-delay 2 -fsSL \
   "$REPO_BASE_URL/fail2ban/jail.local" \
   -o /etc/fail2ban/jail.local
 
@@ -129,7 +130,7 @@ FILTERS=(
 for file in "${FILTERS[@]}"; do
   log "⬇️ 下载 $file"
 
-  curl -fsSL \
+  curl --retry 3 --retry-delay 2 -fsSL \
     "$REPO_BASE_URL/fail2ban/filter.d/$file" \
     -o "/etc/fail2ban/filter.d/$file"
 done
@@ -137,9 +138,13 @@ done
 # ==============================
 # Fail2ban 配置检查
 # ==============================
-log "🧪 检查 Fail2ban 配置"
 
-fail2ban-client -d >/dev/null
+if fail2ban-client -d >/dev/null; then
+  log "✅ Fail2ban 配置检查通过"
+else
+  log "❌ Fail2ban 配置错误"
+  exit 1
+fi
 
 # ==============================
 # 启动 Fail2ban
@@ -153,7 +158,7 @@ systemctl restart fail2ban
 if ! command -v node &>/dev/null; then
   log "🟢 安装 Node.js"
 
-  curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+  curl --retry 3 --retry-delay 2 -fsSL https://deb.nodesource.com/setup_20.x | bash -
 
   apt install -y nodejs
 fi
@@ -161,9 +166,11 @@ fi
 # ==============================
 # PM2
 # ==============================
-log "📦 安装 PM2"
+if ! command -v pm2 &>/dev/null; then
+  log "📦 安装 PM2"
 
-npm install -g pm2
+  npm install -g pm2
+fi
 
 # ==============================
 # 清理系统

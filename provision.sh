@@ -186,7 +186,7 @@ nginx -t
 # 启动 Nginx
 # ==============================
 systemctl enable nginx
-systemctl restart nginx
+systemctl reload nginx || systemctl restart nginx
 
 # ==============================
 # Fail2ban
@@ -228,7 +228,7 @@ fail2ban-client -d >/dev/null
 # 启动 Fail2ban
 # ==============================
 systemctl enable fail2ban
-systemctl restart fail2ban
+systemctl reload fail2ban || systemctl restart fail2ban
 
 # ==============================
 # Node.js

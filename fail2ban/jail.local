@@ -55,16 +55,6 @@ maxretry = 2
 findtime = 600
 bantime = 1209600
 
-[nginx-444]
-enabled  = true
-port     = http,https
-filter   = nginx-444
-logpath  = /var/log/nginx/access.log
-
-maxretry = 5
-findtime = 60
-bantime  = 604800
-
 [nginx-api-auth]
 enabled = true
 filter = nginx-api-auth

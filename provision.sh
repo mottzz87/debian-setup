@@ -72,16 +72,24 @@ log "🕒 设置时区"
 timedatectl set-timezone Asia/Tokyo
 
 # ==============================
-# 拉取仓库
+# 同步仓库
 # ==============================
 log "📥 同步 debian-setup 仓库"
 
-if [ -d "$WORKDIR/.git" ]; then
-  git -C "$WORKDIR" pull
-else
+if [ ! -d "$WORKDIR/.git" ]; then
+
   rm -rf "$WORKDIR"
 
   git clone "$REPO_URL" "$WORKDIR"
+
+else
+
+  cd "$WORKDIR"
+
+  git fetch origin
+
+  git reset --hard origin/main
+
 fi
 
 # ==============================

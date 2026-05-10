@@ -128,6 +128,13 @@ if [ -f /etc/nginx/nginx.conf ]; then
   cp /etc/nginx/nginx.conf "$BACKUP_FILE"
 fi
 
+# 删除 Debian 默认站点
+if [ -f /etc/nginx/sites-enabled/default ]; then
+  log "🗑️ 删除默认 nginx site"
+
+  rm -f /etc/nginx/sites-enabled/default
+fi
+
 # ==============================
 # 同步 nginx.conf
 # ==============================

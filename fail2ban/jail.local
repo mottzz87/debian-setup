@@ -1,0 +1,95 @@
+[DEFAULT]
+
+# 白名单（一定要有！）
+ignoreip = 127.0.0.1/8 ::1 106.146.0.0/16 106.133.0.0/16 2001:268:9800::/40 
+
+# 封禁时间递增（你问的重点）
+bantime.increment = true
+bantime.factor = 2
+bantime.max = 2592000
+
+[sshd]
+enabled = true
+port = 6522
+backend = systemd
+maxretry = 6
+findtime = 600
+bantime = 604800
+
+[nginx-http-auth]
+enabled  = true
+port     = http,https
+filter   = nginx-http-auth
+logpath  = /var/log/nginx/*access.log
+maxretry = 5
+
+[nginx-botsearch]
+enabled  = true
+port     = http,https
+filter   = nginx-botsearch
+logpath  = /var/log/nginx/*access.log
+maxretry = 5
+
+[nginx-forbidden]
+enabled  = true
+port     = http,https
+filter   = nginx-forbidden
+logpath  = /var/log/nginx/*access.log
+maxretry = 5
+findtime = 600
+bantime = 604800
+
+[nginx-bad-request]
+enabled  = true
+port     = http,https
+filter   = nginx-bad-request
+logpath  = /var/log/nginx/*access.log
+maxretry = 5
+
+[nginx-scanner]
+enabled = true
+port = http,https
+filter = nginx-scanner
+logpath = /var/log/nginx/*access.log
+maxretry = 2
+findtime = 600
+bantime = 1209600
+
+[nginx-444]
+enabled  = true
+port     = http,https
+filter   = nginx-444
+logpath  = /var/log/nginx/access.log
+
+maxretry = 5
+findtime = 60
+bantime  = 604800
+
+[nginx-api-auth]
+enabled = true
+filter = nginx-api-auth
+logpath = /var/log/nginx/access.log
+
+maxretry = 10
+findtime = 60
+bantime = 259200
+
+action = iptables-multiport[name=nginx-api-auth, port="http,https"]
+
+[nginx-aggressive]
+enabled  = true
+port     = http,https
+filter   = nginx-aggressive
+logpath  = /var/log/nginx/access.log
+
+maxretry = 3
+findtime = 300
+bantime  = 1209600
+
+[recidive]
+enabled  = true
+logpath  = /var/log/fail2ban.log
+
+bantime  = 2592000   # 30天
+findtime = 86400
+maxretry = 3

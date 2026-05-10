@@ -8,11 +8,17 @@ SSH_USER="admin"
 SSH_PORT=6522
 LOG_FILE="/var/log/provision.log"
 
+# GitHub 仓库（建议后续改成 tag/version）
+REPO_BASE_URL="https://raw.githubusercontent.com/mottzz87/debian-setup/main"
+
 export DEBIAN_FRONTEND=noninteractive
 
+# ==============================
+# 日志函数
+# ==============================
 log() {
   echo -e "\033[1;32m[INFO]\033[0m $1"
-  echo "[INFO] $1" >> $LOG_FILE
+  echo "[INFO] $1" >> "$LOG_FILE"
 }
 
 # ==============================
@@ -29,20 +35,35 @@ log "🚀 开始 provision（系统层）"
 # 系统更新
 # ==============================
 log "📦 更新系统"
+
 apt update -y
 apt upgrade -y -o Dpkg::Options::="--force-confnew"
 
 # ==============================
-# 基础工具（只保留必要）
+# 基础工具
 # ==============================
 log "🔧 安装基础工具"
+
 apt install -y \
-  sudo curl wget git vim unzip htop net-tools \
-  ca-certificates gnupg lsb-release zoxide zsh
+  sudo \
+  curl \
+  wget \
+  git \
+  vim \
+  unzip \
+  htop \
+  net-tools \
+  ca-certificates \
+  gnupg \
+  lsb-release \
+  zoxide \
+  zsh
 
 # ==============================
 # 时区
 # ==============================
+log "🕒 设置时区"
+
 timedatectl set-timezone Asia/Tokyo
 
 # ==============================
@@ -50,18 +71,24 @@ timedatectl set-timezone Asia/Tokyo
 # ==============================
 if ! command -v docker &>/dev/null; then
   log "🐳 安装 Docker"
+
   apt install -y docker.io docker-compose
 fi
 
 systemctl enable docker
 systemctl restart docker
-usermod -aG docker $SSH_USER
+
+# 用户存在才加入 docker 组
+if id "$SSH_USER" &>/dev/null; then
+  usermod -aG docker "$SSH_USER"
+fi
 
 # ==============================
 # Nginx
 # ==============================
 if ! command -v nginx &>/dev/null; then
   log "🌐 安装 Nginx"
+
   apt install -y nginx
 fi
 
@@ -75,59 +102,78 @@ log "🛡️ 配置 Fail2ban"
 
 apt install -y fail2ban
 
-cat > /etc/fail2ban/jail.local <<EOF
-[DEFAULT]
-ignoreip = 127.0.0.1/8 ::1
-bantime.increment = true
-bantime.factor = 2
-bantime.max = 2592000
+# 创建目录
+mkdir -p /etc/fail2ban/filter.d
 
-[sshd]
-enabled = true
-port = $SSH_PORT
-backend = systemd
-maxretry = 6
-findtime = 600
-bantime = 604800
+# ==============================
+# 下载 jail.local
+# ==============================
+log "📥 下载 jail.local"
 
-[nginx-http-auth]
-enabled = true
-port = http,https
-logpath = /var/log/nginx/*access.log
-maxretry = 5
+curl -fsSL \
+  "$REPO_BASE_URL/fail2ban/jail.local" \
+  -o /etc/fail2ban/jail.local
 
-[nginx-botsearch]
-enabled = true
-port = http,https
-logpath = /var/log/nginx/*access.log
-maxretry = 5
+# ==============================
+# 下载 filter.d
+# ==============================
+log "📥 下载 Fail2ban filters"
 
-[recidive]
-enabled = true
-logpath = /var/log/fail2ban.log
-bantime = 2592000
-findtime = 86400
-maxretry = 3
-EOF
+FILTERS=(
+  nginx-444.conf
+  nginx-aggressive.conf
+  nginx-api-auth.conf
+  nginx-scanner.conf
+)
 
+for file in "${FILTERS[@]}"; do
+  log "⬇️ 下载 $file"
+
+  curl -fsSL \
+    "$REPO_BASE_URL/fail2ban/filter.d/$file" \
+    -o "/etc/fail2ban/filter.d/$file"
+done
+
+# ==============================
+# Fail2ban 配置检查
+# ==============================
+log "🧪 检查 Fail2ban 配置"
+
+fail2ban-client -d >/dev/null
+
+# ==============================
+# 启动 Fail2ban
+# ==============================
 systemctl enable fail2ban
 systemctl restart fail2ban
 
 # ==============================
-# Node + PM2（可选基础设施）
+# Node.js
 # ==============================
 if ! command -v node &>/dev/null; then
   log "🟢 安装 Node.js"
+
   curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+
   apt install -y nodejs
 fi
+
+# ==============================
+# PM2
+# ==============================
+log "📦 安装 PM2"
 
 npm install -g pm2
 
 # ==============================
-# 清理
+# 清理系统
 # ==============================
+log "🧹 清理系统"
+
 apt autoremove -y
 apt clean
 
+# ==============================
+# 完成
+# ==============================
 log "✅ provision（系统层）完成"

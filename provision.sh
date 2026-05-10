@@ -129,10 +129,11 @@ if [ -f /etc/nginx/nginx.conf ]; then
 fi
 
 # 删除 Debian 默认站点
-if [ -f /etc/nginx/sites-enabled/default ]; then
+if [ -e /etc/nginx/sites-enabled/default ]; then
   log "🗑️ 删除默认 nginx site"
 
-  rm -f /etc/nginx/sites-enabled/default
+  unlink /etc/nginx/sites-enabled/default || true
+  rm -f /etc/nginx/sites-enabled/default || true
 fi
 
 # ==============================

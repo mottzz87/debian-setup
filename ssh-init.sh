@@ -55,6 +55,24 @@ echo "$SSH_USER:$PASS1" | chpasswd
 # ===== sudo 权限 =====
 usermod -aG sudo $SSH_USER
 
+# ===== 是否开启免密码 sudo =====
+read -p "👉 是否开启免密码 sudo？(y/N): " ENABLE_NOPASSWD
+
+if [[ "$ENABLE_NOPASSWD" =~ ^[Yy]$ ]]; then
+
+  echo "$SSH_USER ALL=(ALL) NOPASSWD:ALL" \
+    > /etc/sudoers.d/$SSH_USER
+
+  chmod 440 /etc/sudoers.d/$SSH_USER
+
+  echo "✅ 已开启免密码 sudo"
+
+else
+
+  echo "ℹ️ 保持 sudo 密码模式"
+
+fi
+
 # ===== SSH 目录 =====
 mkdir -p /home/$SSH_USER/.ssh
 echo "$PUBKEY" > /home/$SSH_USER/.ssh/authorized_keys
@@ -101,5 +119,9 @@ systemctl restart ssh
 
 echo "=== ✅ 初始化完成 ==="
 echo "👉 登录方式：ssh -p $SSH_PORT $SSH_USER@服务器IP"
-echo "👉 提权方式：sudo -i（输入刚设置的密码）"
+if [[ "$ENABLE_NOPASSWD" =~ ^[Yy]$ ]]; then
+  echo "👉 提权方式：sudo -i（免密码）"
+else
+  echo "👉 提权方式：sudo -i（输入密码）"
+fi
 echo "⚠️ 请务必先测试登录成功，再关闭 root！"

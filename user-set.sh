@@ -1,4 +1,3 @@
-```bash id="z5r3km"
 #!/bin/bash
 set -euo pipefail
 
@@ -195,4 +194,3 @@ pm2 startup systemd -u $(whoami) --hp $HOME || true
 pm2 save || true
 
 echo "✅ USER INIT DONE"
-```

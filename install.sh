@@ -1,4 +1,3 @@
-```bash id="xjlwm7"
 #!/bin/bash
 set -euo pipefail
 
@@ -91,4 +90,3 @@ echo "=================================="
 
 echo "👉 reconnect:"
 echo "ssh -p 6522 admin@SERVER_IP"
-```

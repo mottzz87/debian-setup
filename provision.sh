@@ -1,4 +1,3 @@
-```bash id="b5g4x0"
 #!/bin/bash
 set -euo pipefail
 
@@ -214,4 +213,3 @@ apt autoremove -y
 apt clean
 
 log "✅ PROVISION DONE"
-```

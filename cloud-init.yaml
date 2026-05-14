@@ -1,4 +1,3 @@
-```yaml id="l0sg7w"
 #cloud-config
 
 hostname: debian
@@ -40,4 +39,3 @@ runcmd:
   - bash /root/bootstrap.sh
 
 final_message: "✅ cloud-init finished"
-```

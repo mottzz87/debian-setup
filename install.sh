@@ -78,7 +78,7 @@ bash ./provision.sh
 echo
 echo "👤 STEP 3: user-init"
 
-sudo -u $SSH_USER bash "$WORKDIR/user-init.sh"
+sudo -u $SSH_USER bash "$WORKDIR/user-set.sh"
 
 echo
 echo "=================================="

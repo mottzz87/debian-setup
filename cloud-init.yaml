@@ -33,7 +33,7 @@ write_files:
 
       bash provision.sh
 
-      sudo -u admin bash user-init.sh
+      sudo -u admin bash user-set.sh
 
 runcmd:
   - bash /root/bootstrap.sh

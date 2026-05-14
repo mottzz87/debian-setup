@@ -1,111 +1,172 @@
+```bash id="z5r3km"
 #!/bin/bash
 set -euo pipefail
 
-echo "=== 👤 USER ENV SETUP ==="
+echo "=== 👤 USER INIT ==="
 
 if [ "$(whoami)" = "root" ]; then
-  echo "❌ 不要用 root 执行 user.sh"
+  echo "❌ 不要用 root 执行"
   exit 1
 fi
 
 # ==============================
-# 依赖检查
-# ==============================
-if ! command -v zsh &>/dev/null; then
-  echo "❌ 未安装 zsh，请先执行 provision.sh"
-  exit 1
-fi
-
-# ==============================
-# fnm（Node 管理器）
+# fnm
 # ==============================
 if [ ! -d "$HOME/.local/share/fnm" ]; then
+
   echo "🟢 安装 fnm"
+
   curl -fsSL https://fnm.vercel.app/install | bash
+
 fi
 
 export FNM_PATH="$HOME/.local/share/fnm"
+
 export PATH="$FNM_PATH:$PATH"
-eval "$(fnm env --shell $(basename $SHELL))"
+
+eval "$($FNM_PATH/fnm env --shell bash)"
 
 # ==============================
-# Node LTS
+# node
 # ==============================
 echo "🟢 安装 Node LTS"
+
 fnm install --lts
+
 fnm default lts-latest
 
 # ==============================
-# npm 工具
+# npm tools
 # ==============================
-echo "📦 安装 npm 工具"
-npm install -g pm2 pnpm yarn
+echo "📦 安装 npm tools"
+
+npm install -g \
+  pm2 \
+  pnpm \
+  yarn
 
 # ==============================
-# Oh My Zsh
+# atuin
 # ==============================
-if [ ! -d "$HOME/.oh-my-zsh" ]; then
-  echo "⚡ 安装 Oh My Zsh"
-  RUNZSH=no CHSH=no sh -c \
-  "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+if ! command -v atuin &>/dev/null; then
+
+  echo "⚡ 安装 atuin"
+
+  curl --proto '=https' --tlsv1.2 -sSf \
+    https://setup.atuin.sh | bash
+
 fi
 
 # ==============================
-# 插件
+# oh-my-zsh
+# ==============================
+if [ ! -d "$HOME/.oh-my-zsh" ]; then
+
+  echo "⚡ 安装 Oh My Zsh"
+
+  RUNZSH=no CHSH=no sh -c \
+  "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+
+fi
+
+# ==============================
+# plugins
 # ==============================
 ZSH_CUSTOM="$HOME/.oh-my-zsh/custom"
+
 mkdir -p "$ZSH_CUSTOM/plugins"
 
-[ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ] && \
-git clone https://github.com/zsh-users/zsh-autosuggestions $ZSH_CUSTOM/plugins/zsh-autosuggestions
+if [ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]; then
 
-[ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ] && \
-git clone https://github.com/zsh-users/zsh-syntax-highlighting $ZSH_CUSTOM/plugins/zsh-syntax-highlighting
+  git clone \
+    https://github.com/zsh-users/zsh-autosuggestions \
+    $ZSH_CUSTOM/plugins/zsh-autosuggestions
+
+fi
+
+if [ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]; then
+
+  git clone \
+    https://github.com/zsh-users/zsh-syntax-highlighting \
+    $ZSH_CUSTOM/plugins/zsh-syntax-highlighting
+
+fi
 
 # ==============================
-# .zshrc 修改（幂等）
+# zshrc
 # ==============================
-ZSHRC="$HOME/.zshrc"
+cat > "$HOME/.zshrc" <<'EOF'
+export ZSH="$HOME/.oh-my-zsh"
 
-# 插件
-grep -q "zsh-autosuggestions" "$ZSHRC" || \
-sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/' "$ZSHRC"
+ZSH_THEME="robbyrussell"
 
-# fnm
-grep -q "fnm env" "$ZSHRC" || cat >> "$ZSHRC" <<'EOF'
-
-# fnm
-export FNM_PATH="$HOME/.local/share/fnm"
-export PATH="$FNM_PATH:$PATH"
-eval "$(fnm env --shell $(basename $SHELL))"
-EOF
-
-# zoxide
-grep -q "zoxide init" "$ZSHRC" || cat >> "$ZSHRC" <<'EOF'
+plugins=(
+  git
+  zsh-autosuggestions
+  zsh-syntax-highlighting
+)
 
 # zoxide
 eval "$(zoxide init zsh --cmd z)"
-EOF
 
-# alias + prompt
-grep -q "alias ll=" "$ZSHRC" || cat >> "$ZSHRC" <<'EOF'
+source $ZSH/oh-my-zsh.sh
+
+# atuin
+eval "$(atuin init zsh)"
+
+# fnm
+export FNM_PATH="$HOME/.local/share/fnm"
+
+if [ -d "$FNM_PATH" ]; then
+  export PATH="$FNM_PATH:$PATH"
+  eval "$(fnm env --shell zsh)"
+fi
+
+# history
+HISTSIZE=50000
+SAVEHIST=50000
+HISTFILE=~/.zsh_history
+
+setopt HIST_IGNORE_DUPS
+setopt SHARE_HISTORY
+setopt APPEND_HISTORY
+
+# completion
+autoload -Uz compinit
+compinit
+
+zstyle ':completion:*' menu select
+
+# fzf
+[ -f /usr/share/doc/fzf/examples/key-bindings.zsh ] && \
+source /usr/share/doc/fzf/examples/key-bindings.zsh
 
 # aliases
-alias ll='ls -alF'
-alias la='ls -A'
-alias l='ls -CF'
+alias cat='batcat'
+
+alias ls='eza --icons'
+alias ll='eza -lah --icons'
+alias la='eza -a --icons'
+alias l='eza --icons'
+
+alias fd='fdfind'
 
 alias gs='git status'
 alias gp='git pull'
+alias gd='git diff'
 alias gc='git commit'
 
 alias dps='docker ps'
 alias dcu='docker compose up -d'
 alias dcd='docker compose down'
 
+alias s='sudo'
 alias r='sudo -i'
 
-# prompt（区分 root / admin）
+# fastfetch
+[[ -t 1 ]] && fastfetch
+
+# prompt
 if [[ $EUID -eq 0 ]]; then
   PROMPT='%F{red}# %n@%m %1~ %# %f'
 else
@@ -114,14 +175,24 @@ fi
 EOF
 
 # ==============================
-# 默认 shell
+# git config
 # ==============================
-CURRENT_SHELL=$(getent passwd $(whoami) | cut -d: -f7)
+echo "⚡ 配置 Git"
 
-if [ "$CURRENT_SHELL" != "$(which zsh)" ]; then
-  echo "🔄 设置默认 shell 为 zsh"
-  chsh -s $(which zsh)
-  echo "⚠️ 请重新登录生效"
-fi
+git config --global init.defaultBranch main
 
-echo "=== ✅ USER ENV READY ==="
+git config --global pull.rebase false
+
+git config --global core.editor vim
+
+# ==============================
+# pm2
+# ==============================
+echo "⚡ 配置 PM2"
+
+pm2 startup systemd -u $(whoami) --hp $HOME || true
+
+pm2 save || true
+
+echo "✅ USER INIT DONE"
+```

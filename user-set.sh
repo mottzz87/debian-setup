@@ -151,6 +151,7 @@ alias dcd='docker compose down'
 
 alias s='sudo'
 alias r='sudo -i'
+alias sa='sudo -iu admin'
 
 # fastfetch
 [[ -t 1 ]] && fastfetch

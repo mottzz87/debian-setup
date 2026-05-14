@@ -1,4 +1,3 @@
-```bash
 #!/bin/bash
 set -euo pipefail
 
@@ -213,4 +212,3 @@ echo "=================================="
 echo "👉 ssh -p $SSH_PORT $SSH_USER@SERVER_IP"
 
 echo "⚠️ 请确认 SSH 登录正常后再关闭 root"
-```

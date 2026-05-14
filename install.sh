@@ -22,9 +22,9 @@ fi
 # ==============================
 # install base packages
 # ==============================
-apt update
+apt-getupdate
 
-apt install -y \
+apt-getinstall -y \
   git \
   curl \
   wget
@@ -78,10 +78,7 @@ bash ./provision.sh
 echo
 echo "👤 STEP 3: user-init"
 
-sudo -u $SSH_USER bash <<EOF
-cd $WORKDIR
-bash ./user-init.sh
-EOF
+sudo -u $SSH_USER bash "$WORKDIR/user-init.sh"
 
 echo
 echo "=================================="

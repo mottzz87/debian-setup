@@ -25,14 +25,14 @@ log "🚀 START PROVISION"
 # ==============================
 # update
 # ==============================
-apt update -y
+apt-getupdate -y
 
 # ==============================
 # locale
 # ==============================
 log "🌏 locale"
 
-apt install -y locales
+apt-getinstall -y locales
 
 sed -i \
 's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' \
@@ -53,7 +53,7 @@ EOF
 # ==============================
 log "📦 packages"
 
-apt install -y \
+apt-getinstall -y \
   sudo \
   curl \
   wget \
@@ -198,7 +198,7 @@ if ! command -v node &>/dev/null; then
   curl -fsSL \
     https://deb.nodesource.com/setup_20.x | bash -
 
-  apt install -y nodejs
+  apt-getinstall -y nodejs
 
 fi
 
@@ -207,8 +207,8 @@ fi
 # ==============================
 log "🧹 clean"
 
-apt autoremove -y
+apt-getautoremove -y
 
-apt clean
+apt-getclean
 
 log "✅ PROVISION DONE"

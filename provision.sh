@@ -74,7 +74,6 @@ apt-get install -y \
   ca-certificates \
   gnupg \
   lsb-release \
-  apt-transport-https \
   zoxide \
   zsh \
   fzf \

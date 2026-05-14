@@ -74,7 +74,6 @@ apt install -y \
   ca-certificates \
   gnupg \
   lsb-release \
-  software-properties-common \
   apt-transport-https \
   zoxide \
   zsh \
@@ -82,7 +81,7 @@ apt install -y \
   fail2ban \
   nginx \
   docker.io \
-  docker-compose-plugin
+  docker-compose
 
 # ==============================
 # timezone

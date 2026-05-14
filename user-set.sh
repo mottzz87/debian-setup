@@ -44,17 +44,6 @@ npm install -g \
   pnpm \
   yarn
 
-# ==============================
-# atuin
-# ==============================
-if ! command -v atuin &>/dev/null; then
-
-  echo "⚡ 安装 atuin"
-
-  curl --proto '=https' --tlsv1.2 -sSf \
-    https://setup.atuin.sh | bash
-
-fi
 
 # ==============================
 # oh-my-zsh
@@ -109,9 +98,6 @@ plugins=(
 eval "$(zoxide init zsh --cmd z)"
 
 source $ZSH/oh-my-zsh.sh
-
-# atuin
-eval "$(atuin init zsh)"
 
 # fnm
 export FNM_PATH="$HOME/.local/share/fnm"

@@ -1,22 +1,28 @@
+```bash
 #!/bin/bash
 set -euo pipefail
 
-SSH_PORT=6522
-SSH_USER=admin
+SSH_PORT="${SSH_PORT:-6522}"
+SSH_USER="${SSH_USER:-admin}"
 
-echo "=== 🔐 SSH INIT ==="
+echo "=================================="
+echo "🔐 SSH INIT"
+echo "=================================="
 
+# ==============================
+# root check
+# ==============================
 if [ "$EUID" -ne 0 ]; then
-  echo "❌ 请用 root 运行"
+  echo "❌ 请用 root 执行"
   exit 1
 fi
 
 # ==============================
-# 基础工具
+# install base packages
 # ==============================
-apt update
+apt-get update
 
-apt install -y \
+apt-get install -y \
   sudo \
   vim \
   curl \
@@ -24,42 +30,61 @@ apt install -y \
   ufw
 
 # ==============================
-# 输入 SSH 公钥
+# SSH PUBKEY
 # ==============================
-echo "👉 请输入 SSH 公钥："
+PUBKEY="${SSH_PUBKEY:-}"
 
-read -r PUBKEY
+if [ -z "$PUBKEY" ]; then
+
+  echo "👉 请输入 SSH 公钥："
+
+  read -r PUBKEY
+
+fi
 
 if [[ ! "$PUBKEY" =~ ^ssh-(ed25519|rsa) ]]; then
-  echo "❌ SSH 公钥格式错误"
+
+  echo "❌ SSH 公钥格式不正确"
+
   exit 1
+
 fi
 
 # ==============================
-# 输入密码
+# PASSWORD
 # ==============================
-while true; do
+PASS1="${SSH_PASSWORD:-}"
 
-  read -s -p "👉 设置 ${SSH_USER} 密码: " PASS1
-  echo
+if [ -z "$PASS1" ]; then
 
-  read -s -p "👉 再输入一次: " PASS2
-  echo
+  while true; do
 
-  if [ "$PASS1" != "$PASS2" ]; then
-    echo "❌ 两次密码不一致"
+    read -s -p "👉 设置 $SSH_USER 密码: " PASS1
+    echo
 
-  elif [ -z "$PASS1" ]; then
-    echo "❌ 密码不能为空"
+    read -s -p "👉 再输入一次: " PASS2
+    echo
 
-  else
-    break
-  fi
+    if [ "$PASS1" != "$PASS2" ]; then
 
-done
+      echo "❌ 两次密码不一致"
+
+    elif [ -z "$PASS1" ]; then
+
+      echo "❌ 密码不能为空"
+
+    else
+
+      break
+
+    fi
+
+  done
+
+fi
 
 # ==============================
-# 创建用户
+# create user
 # ==============================
 if id "$SSH_USER" &>/dev/null; then
 
@@ -67,51 +92,77 @@ if id "$SSH_USER" &>/dev/null; then
 
 else
 
-  adduser --disabled-password --gecos "" $SSH_USER
+  adduser \
+    --disabled-password \
+    --gecos "" \
+    "$SSH_USER"
 
 fi
 
+# ==============================
+# set password
+# ==============================
 echo "$SSH_USER:$PASS1" | chpasswd
-
-usermod -aG sudo $SSH_USER
 
 # ==============================
 # sudo
 # ==============================
-read -p "👉 开启免密码 sudo？(y/N): " ENABLE_NOPASSWD
+usermod -aG sudo "$SSH_USER"
 
-if [[ "$ENABLE_NOPASSWD" =~ ^[Yy]$ ]]; then
+# ==============================
+# nopasswd sudo
+# ==============================
+ENABLE_NOPASSWD="${ENABLE_NOPASSWD:-}"
+
+if [ -z "$ENABLE_NOPASSWD" ]; then
+
+  read -p "👉 开启免密码 sudo？(y/N): " ENABLE_NOPASSWD
+
+fi
+
+if [[ "$ENABLE_NOPASSWD" =~ ^([Yy]|[Yy][Ee][Ss]|true|TRUE)$ ]]; then
 
   echo "$SSH_USER ALL=(ALL) NOPASSWD:ALL" \
     > /etc/sudoers.d/$SSH_USER
 
   chmod 440 /etc/sudoers.d/$SSH_USER
 
+  echo "✅ 已开启免密码 sudo"
+
+else
+
+  rm -f /etc/sudoers.d/$SSH_USER || true
+
+  echo "ℹ️ sudo 需要密码"
+
 fi
 
 # ==============================
-# SSH key
+# ssh dir
 # ==============================
 mkdir -p /home/$SSH_USER/.ssh
 
 echo "$PUBKEY" \
   > /home/$SSH_USER/.ssh/authorized_keys
 
-chown -R $SSH_USER:$SSH_USER /home/$SSH_USER/.ssh
+chown -R \
+  $SSH_USER:$SSH_USER \
+  /home/$SSH_USER/.ssh
 
 chmod 700 /home/$SSH_USER/.ssh
 
-chmod 600 /home/$SSH_USER/.ssh/authorized_keys
+chmod 600 \
+  /home/$SSH_USER/.ssh/authorized_keys
 
 # ==============================
-# SSHD
+# sshd config
 # ==============================
 SSHD_CONFIG="/etc/ssh/sshd_config"
 
-cp $SSHD_CONFIG \
-  ${SSHD_CONFIG}.bak.$(date +%s)
+cp "$SSHD_CONFIG" \
+  "${SSHD_CONFIG}.bak.$(date +%s)"
 
-cat > $SSHD_CONFIG <<EOF
+cat > "$SSHD_CONFIG" <<EOF
 Port $SSH_PORT
 
 PermitRootLogin no
@@ -123,7 +174,9 @@ ChallengeResponseAuthentication no
 KbdInteractiveAuthentication no
 
 UsePAM yes
+
 X11Forwarding yes
+
 PrintMotd no
 
 AcceptEnv LANG LC_*
@@ -131,10 +184,13 @@ AcceptEnv LANG LC_*
 Subsystem sftp /usr/lib/openssh/sftp-server
 EOF
 
+# ==============================
+# test sshd
+# ==============================
 sshd -t
 
 # ==============================
-# Firewall
+# ufw
 # ==============================
 ufw allow $SSH_PORT/tcp
 
@@ -145,13 +201,16 @@ ufw allow 443/tcp
 ufw --force enable
 
 # ==============================
-# Restart SSH
+# restart ssh
 # ==============================
 systemctl restart ssh
 
 echo
-echo "=== ✅ SSH INIT DONE ==="
+echo "=================================="
+echo "✅ SSH INIT DONE"
+echo "=================================="
 
-echo "👉 ssh -p $SSH_PORT ${SSH_USER}@SERVER_IP"
+echo "👉 ssh -p $SSH_PORT $SSH_USER@SERVER_IP"
 
 echo "⚠️ 请确认 SSH 登录正常后再关闭 root"
+```

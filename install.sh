@@ -22,9 +22,9 @@ fi
 # ==============================
 # install base packages
 # ==============================
-apt-getupdate
+apt-get update
 
-apt-getinstall -y \
+apt-get install -y \
   git \
   curl \
   wget

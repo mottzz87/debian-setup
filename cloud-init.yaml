@@ -23,9 +23,9 @@ write_files:
       #!/bin/bash
       set -e
 
-      apt-getupdate
+      apt-get update
 
-      apt-getinstall -y git curl wget sudo
+      apt-get install -y git curl wget sudo
 
       git clone https://github.com/mottzz87/debian-setup.git /opt/debian-setup
 

@@ -52,8 +52,12 @@ if [ ! -d "$HOME/.oh-my-zsh" ]; then
 
   echo "⚡ 安装 Oh My Zsh"
 
-  RUNZSH=no CHSH=no sh -c \
+  RUNZSH=no \
+  CHSH=no \
+  KEEP_ZSHRC=yes \
+  sh -c \
   "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+
 
 fi
 
@@ -127,7 +131,7 @@ zstyle ':completion:*' menu select
 source /usr/share/doc/fzf/examples/key-bindings.zsh
 
 # aliases
-alias cat='batcat'
+alias bat='batcat'
 
 alias ls='eza --icons'
 alias ll='eza -lah --icons'

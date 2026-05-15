@@ -148,6 +148,10 @@ alias gc='git commit'
 alias dps='docker ps'
 alias dcu='docker compose up -d'
 alias dcd='docker compose down'
+alias zshc='nano ~/.zshrc'
+
+alias python=/usr/bin/python3
+alias py='python'
 
 alias s='sudo'
 alias r='sudo -i'

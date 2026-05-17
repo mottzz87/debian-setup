@@ -187,19 +187,22 @@ systemctl enable fail2ban
 
 systemctl restart fail2ban
 
+
 # ==============================
-# nodejs
+# root shell
 # ==============================
-if ! command -v node &>/dev/null; then
+log "🐚 root shell"
 
-  log "🟢 nodejs"
+ROOT_SHELL_FILE="/root/.bashrc"
 
-  curl -fsSL \
-    https://deb.nodesource.com/setup_20.x | bash -
+touch "$ROOT_SHELL_FILE"
 
-  apt-get install -y nodejs
+grep -q "alias sa='sudo -iu $SSH_USER'" "$ROOT_SHELL_FILE" || cat >> "$ROOT_SHELL_FILE" <<EOF
 
-fi
+# custom aliases
+alias sa='sudo -iu $SSH_USER'
+
+EOF
 
 # ==============================
 # clean

@@ -48,13 +48,19 @@ else
 
   git fetch origin
 
+  echo "⚠️ local changes will be discarded"
+
   git reset --hard origin/main
 
 fi
 
 cd "$WORKDIR"
 
-chmod +x *.sh
+chmod +x \
+  ssh-init.sh \
+  provision.sh \
+  root-init.sh \
+  user-init.sh
 
 # ==============================
 # ssh-init
@@ -73,17 +79,38 @@ echo "⚙️ STEP 2: provision"
 bash ./provision.sh
 
 # ==============================
+# root-init
+# ==============================
+echo
+echo "👑 STEP 3: root-init"
+
+bash ./root-init.sh
+
+# ==============================
+# user check
+# ==============================
+if ! id "$SSH_USER" &>/dev/null; then
+  echo "❌ user not found: $SSH_USER"
+  exit 1
+fi
+
+# ==============================
 # user-init
 # ==============================
 echo
-echo "👤 STEP 3: user-init"
+echo "👤 STEP 4: user-init"
 
-sudo -u $SSH_USER bash "$WORKDIR/user-set.sh"
+sudo -iu "$SSH_USER" bash -lc "$WORKDIR/user-init.sh"
 
 echo
 echo "=================================="
 echo "✅ ALL DONE"
 echo "=================================="
 
+echo
 echo "👉 reconnect:"
 echo "ssh -p 6522 admin@SERVER_IP"
+
+echo
+echo "💡 recommended:"
+echo "reboot"

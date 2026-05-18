@@ -189,20 +189,11 @@ systemctl restart fail2ban
 
 
 # ==============================
-# root shell
+# root zsh
 # ==============================
-log "🐚 root shell"
+log "🐚 root zsh"
 
-ROOT_SHELL_FILE="/root/.bashrc"
-
-touch "$ROOT_SHELL_FILE"
-
-grep -q "alias sa='sudo -iu $SSH_USER'" "$ROOT_SHELL_FILE" || cat >> "$ROOT_SHELL_FILE" <<EOF
-
-# custom aliases
-alias sa='sudo -iu $SSH_USER'
-
-EOF
+chsh -s /usr/bin/zsh root || true
 
 # ==============================
 # clean

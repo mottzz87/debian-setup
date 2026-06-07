@@ -26,7 +26,42 @@ apt-get install -y \
   vim \
   curl \
   wget \
-  ufw
+  ufw \
+  chrony
+
+# ==============================
+
+# timezone & ntp
+
+# ==============================
+
+TIMEZONE="${TIMEZONE:-Asia/Tokyo}"
+
+echo "⏰ Configuring timezone: $TIMEZONE"
+
+timedatectl set-timezone "$TIMEZONE"
+
+systemctl enable chrony
+
+systemctl restart chrony
+
+echo "⏳ Waiting for time sync..."
+
+for i in {1..10}; do
+
+  if timedatectl show -p NTPSynchronized --value 2>/dev/null | grep -q yes; then
+
+    echo "✅ Time synchronized"
+
+    break
+
+  fi
+
+  sleep 1
+
+done
+
+timedatectl
 
 # ==============================
 # SSH PUBKEY

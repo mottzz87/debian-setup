@@ -7,35 +7,17 @@ timezone: Asia/Tokyo
 package_update: true
 package_upgrade: true
 
-users:
-  - name: admin
-    groups: sudo
-    shell: /usr/bin/zsh
-    sudo: ALL=(ALL) NOPASSWD:ALL
-
-    ssh_authorized_keys:
-      - YOUR_PUBLIC_KEY
-
-write_files:
-  - path: /root/bootstrap.sh
-    permissions: '0755'
-    content: |
-      #!/bin/bash
-      set -e
-
-      apt-get update
-
-      apt-get install -y git curl wget sudo
-
-      git clone https://github.com/mottzz87/debian-setup.git /opt/debian-setup
-
-      cd /opt/debian-setup
-
-      bash provision.sh
-
-      sudo -u admin bash user-set.sh
-
 runcmd:
-  - bash /root/bootstrap.sh
+  - |
+    export DEBIAN_FRONTEND=noninteractive
+
+    apt-get update
+    apt-get install -y curl
+
+    PROFILE=full \ 
+    SSH_PUBKEY="YOUR_PUBLIC_KEY" \
+    SSH_PASSWORD="YOUR_PASSWORD" \
+    ENABLE_NOPASSWD=true \
+    bash <(curl -fsSL https://raw.githubusercontent.com/mottzz87/debian-setup/main/install.sh)
 
 final_message: "✅ cloud-init finished"

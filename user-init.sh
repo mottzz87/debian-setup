@@ -8,6 +8,8 @@ if [ "$(whoami)" = "root" ]; then
   exit 1
 fi
 
+SSH_USER="${SSH_USER:-admin}"
+
 # ==============================
 # fnm
 # ==============================
@@ -87,7 +89,7 @@ fi
 # ==============================
 # zshrc
 # ==============================
-cat > "$HOME/.zshrc" <<'EOF'
+cat > "$HOME/.zshrc" <<EOF
 export ZSH="$HOME/.oh-my-zsh"
 
 ZSH_THEME="robbyrussell"
@@ -155,7 +157,7 @@ alias py='python'
 
 alias s='sudo'
 alias r='sudo -i'
-alias sa='sudo -iu admin'
+alias a='sudo -iu $SSH_USER'
 
 # fastfetch
 [[ -t 1 ]] && fastfetch

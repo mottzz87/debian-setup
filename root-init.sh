@@ -8,7 +8,7 @@ if [ "$(whoami)" != "root" ]; then
   exit 1
 fi
 
-SSH_USER="admin"
+SSH_USER="${SSH_USER:-admin}"
 
 # ==============================
 # oh-my-zsh
@@ -108,7 +108,7 @@ alias py='python3'
 
 alias c='clear'
 
-alias sa='sudo -iu $SSH_USER'
+alias a='su -iu $SSH_USER'
 
 # fastfetch
 [[ -t 1 ]] && fastfetch

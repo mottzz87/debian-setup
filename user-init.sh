@@ -41,10 +41,9 @@ fnm default lts-latest
 # ==============================
 echo "📦 安装 npm tools"
 
-npm install -g \
-  pm2 \
-  pnpm \
-  yarn
+command -v pm2 >/dev/null || npm install -g pm2
+command -v pnpm >/dev/null || npm install -g pnpm
+command -v yarn >/dev/null || npm install -g yarn
 
 
 # ==============================
@@ -188,7 +187,14 @@ git config --global core.editor vim
 # ==============================
 echo "⚡ 配置 PM2"
 
-pm2 startup systemd -u $(whoami) --hp $HOME || true
+PM2_STARTUP_CMD=$(
+    pm2 startup systemd -u "$(whoami)" --hp "$HOME" 2>/dev/null \
+    | grep '^sudo env '
+)
+
+if [ -n "$PM2_STARTUP_CMD" ]; then
+    eval "${PM2_STARTUP_CMD#sudo }"
+fi
 
 pm2 save || true
 

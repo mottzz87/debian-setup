@@ -150,6 +150,8 @@ fi
 # ==============================
 usermod -aG sudo "$SSH_USER"
 
+usermod -s /usr/bin/zsh "$SSH_USER"
+
 # ==============================
 # nopasswd sudo
 # ==============================

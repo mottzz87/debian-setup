@@ -89,7 +89,7 @@ fi
 # ==============================
 # zshrc
 # ==============================
-cat > "$HOME/.zshrc" <<EOF
+cat > "$HOME/.zshrc" <<'EOF'
 export ZSH="$HOME/.oh-my-zsh"
 
 ZSH_THEME="robbyrussell"
@@ -157,7 +157,7 @@ alias py='python'
 
 alias s='sudo'
 alias r='sudo -i'
-alias a='sudo -iu $SSH_USER'
+alias a='sudo -iu __SSH_USER__'
 
 # fastfetch
 [[ -t 1 ]] && fastfetch
@@ -169,6 +169,8 @@ else
   PROMPT='%F{green}➜ %1~ %f'
 fi
 EOF
+
+sed -i "s/__SSH_USER__/$SSH_USER/g" "$HOME/.zshrc"
 
 # ==============================
 # git config

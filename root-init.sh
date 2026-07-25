@@ -51,7 +51,7 @@ fi
 # ==============================
 # root zshrc
 # ==============================
-cat > /root/.zshrc <<EOF
+cat > /root/.zshrc <<'EOF'
 export ZSH="\$HOME/.oh-my-zsh"
 
 ZSH_THEME="robbyrussell"
@@ -108,7 +108,7 @@ alias py='python3'
 
 alias c='clear'
 
-alias a='su -iu $SSH_USER'
+alias a='su - __SSH_USER__'
 
 # fastfetch
 [[ -t 1 ]] && fastfetch
@@ -116,6 +116,8 @@ alias a='su -iu $SSH_USER'
 # prompt
 PROMPT='%F{red}# %n@%m %1~ %# %f'
 EOF
+
+sed -i "s/__SSH_USER__/$SSH_USER/g" /root/.zshrc
 
 # ==============================
 # default shell

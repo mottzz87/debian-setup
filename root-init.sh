@@ -52,7 +52,7 @@ fi
 # root zshrc
 # ==============================
 cat > /root/.zshrc <<'EOF'
-export ZSH="\$HOME/.oh-my-zsh"
+export ZSH="$HOME/.oh-my-zsh"
 
 ZSH_THEME="robbyrussell"
 
@@ -63,9 +63,9 @@ plugins=(
 )
 
 # zoxide
-eval "\$(zoxide init zsh --cmd z)"
+eval "$(zoxide init zsh --cmd z)"
 
-source \$ZSH/oh-my-zsh.sh
+source $ZSH/oh-my-zsh.sh
 
 # history
 HISTSIZE=50000

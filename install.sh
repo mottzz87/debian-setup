@@ -1,116 +1,160 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 REPO_URL="https://github.com/mottzz87/debian-setup.git"
-
 WORKDIR="/opt/debian-setup"
 
-SSH_USER="admin"
+SSH_USER="${SSH_USER:-admin}"
+PROFILE="${PROFILE:-full}"
 
 echo "=================================="
 echo "🚀 Debian Auto Setup"
 echo "=================================="
 
-# ==============================
-# root check
-# ==============================
-if [ "$EUID" -ne 0 ]; then
-  echo "❌ 请使用 root 执行"
-  exit 1
+echo "Profile : $PROFILE"
+echo "User    : $SSH_USER"
+
+########################################
+# Root Check
+########################################
+
+if [[ $EUID -ne 0 ]]; then
+    echo "❌ 请使用 root 执行"
+    exit 1
 fi
 
-# ==============================
-# install base packages
-# ==============================
+########################################
+# Base Packages
+########################################
+
 apt-get update
 
 apt-get install -y \
-  git \
-  curl \
-  wget
+    git \
+    curl \
+    wget
 
-# ==============================
-# clone repo
-# ==============================
-if [ ! -d "$WORKDIR/.git" ]; then
+########################################
+# Clone / Update Repo
+########################################
 
-  echo "📥 clone repository"
+if [[ ! -d "$WORKDIR/.git" ]]; then
 
-  rm -rf "$WORKDIR"
+    echo
+    echo "📥 Cloning repository..."
 
-  git clone "$REPO_URL" "$WORKDIR"
+    rm -rf "$WORKDIR"
+
+    git clone "$REPO_URL" "$WORKDIR"
 
 else
 
-  echo "📥 update repository"
+    echo
+    echo "📥 Updating repository..."
 
-  cd "$WORKDIR"
+    cd "$WORKDIR"
 
-  git fetch origin
+    git fetch origin
 
-  echo "⚠️ local changes will be discarded"
+    echo "⚠️ Discarding local changes..."
 
-  git reset --hard origin/main
+    git reset --hard origin/main
 
 fi
 
 cd "$WORKDIR"
 
 chmod +x \
-  ssh-init.sh \
-  provision.sh \
-  root-init.sh \
-  user-init.sh
+    install.sh \
+    ssh-init.sh \
+    provision-base.sh \
+    provision-service.sh \
+    root-init.sh \
+    user-init.sh
 
-# ==============================
-# ssh-init
-# ==============================
+########################################
+# STEP 1
+########################################
+
 echo
-echo "🔐 STEP 1: ssh-init"
+echo "🔐 STEP 1 / 5"
+echo "SSH INIT"
 
 bash ./ssh-init.sh
 
-# ==============================
-# provision
-# ==============================
-echo
-echo "⚙️ STEP 2: provision"
+########################################
+# STEP 2
+########################################
 
-bash ./provision.sh
-
-# ==============================
-# root-init
-# ==============================
 echo
-echo "👑 STEP 3: root-init"
+echo "🧰 STEP 2 / 5"
+echo "BASE PROVISION"
+
+bash ./provision-base.sh
+
+########################################
+# STEP 3
+########################################
+
+if [[ "$PROFILE" == "full" ]]; then
+
+    echo
+    echo "🚀 STEP 3 / 5"
+    echo "SERVICE PROVISION"
+
+    bash ./provision-service.sh
+
+else
+
+    echo
+    echo "⏭️ Skip service provision (PROFILE=$PROFILE)"
+
+fi
+
+########################################
+# STEP 4
+########################################
+
+echo
+echo "👑 STEP 4 / 5"
+echo "ROOT INIT"
 
 bash ./root-init.sh
 
-# ==============================
-# user check
-# ==============================
+########################################
+# STEP 5
+########################################
+
 if ! id "$SSH_USER" &>/dev/null; then
-  echo "❌ user not found: $SSH_USER"
-  exit 1
+    echo "❌ User not found: $SSH_USER"
+    exit 1
 fi
 
-# ==============================
-# user-init
-# ==============================
 echo
-echo "👤 STEP 4: user-init"
+echo "👤 STEP 5 / 5"
+echo "USER INIT"
 
 sudo -iu "$SSH_USER" bash -lc "$WORKDIR/user-init.sh"
 
+########################################
+# DONE
+########################################
+
 echo
 echo "=================================="
-echo "✅ ALL DONE"
+echo "🎉 INSTALL COMPLETED"
 echo "=================================="
 
 echo
-echo "👉 reconnect:"
-echo "ssh -p 6522 admin@SERVER_IP"
+echo "SSH User : $SSH_USER"
+echo "Profile  : $PROFILE"
 
 echo
-echo "💡 recommended:"
+echo "Reconnect with:"
+echo
+echo "ssh -p 6522 ${SSH_USER}@SERVER_IP"
+
+echo
+echo "Recommended:"
+echo
 echo "reboot"

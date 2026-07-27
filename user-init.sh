@@ -167,6 +167,16 @@ if [[ $EUID -eq 0 ]]; then
 else
   PROMPT='%F{green}➜ %1~ %f'
 fi
+
+# ==============================
+# local overrides
+# ==============================
+# Load all local config files
+for file in ~/.zshrc.d/*.zsh(N); do
+    source "$file"
+done
+
+[[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
 EOF
 
 sed -i "s/__SSH_USER__/$SSH_USER/g" "$HOME/.zshrc"

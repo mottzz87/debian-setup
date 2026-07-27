@@ -115,6 +115,16 @@ alias a='su - __SSH_USER__'
 
 # prompt
 PROMPT='%F{red}# %n@%m %1~ %# %f'
+
+# ==============================
+# local overrides
+# ==============================
+# Load all local config files
+for file in ~/.zshrc.d/*.zsh(N); do
+    source "$file"
+done
+
+[[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
 EOF
 
 sed -i "s/__SSH_USER__/$SSH_USER/g" /root/.zshrc
